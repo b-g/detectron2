@@ -368,6 +368,63 @@ class Visualizer:
         )
         return self.output
 
+    def draw_instance_predictions_mask_only(self, predictions):
+        """
+        Draw instance-level prediction masks results on an image.
+
+        Args:
+            predictions (Instances): the output of an instance detection/segmentation
+                model. Following fields will be used to draw:
+                "pred_boxes", "pred_classes", "scores", "pred_masks" (or "pred_masks_rle").
+
+        Returns:
+            output (VisImage): image object with visualizations.
+        """
+        self.draw_rect((0,0,self.output.width,self.output.height), alpha=1.0, color="black", edge_color="black", line_style="-")
+
+        boxes = predictions.pred_boxes if predictions.has("pred_boxes") else None
+        scores = predictions.scores if predictions.has("scores") else None
+        classes = predictions.pred_classes if predictions.has("pred_classes") else None
+        labels = _create_text_labels(classes, scores, self.metadata.get("thing_classes", None))
+        keypoints = predictions.pred_keypoints if predictions.has("pred_keypoints") else None
+
+        if predictions.has("pred_masks"):
+            masks = np.asarray(predictions.pred_masks)
+            masks = [GenericMask(x, self.output.height, self.output.width) for x in masks]
+        else:
+            masks = None
+
+        if self._instance_mode == ColorMode.SEGMENTATION and self.metadata.get("thing_colors"):
+            colors = [
+                self._jitter([x / 255 for x in self.metadata.thing_colors[c]]) for c in classes
+            ]
+            alpha = 0.8
+        else:
+            colors = None
+            alpha = 0.5
+
+        # filter by class name
+        # TODO not just for person
+        filters = []
+        for i, label in enumerate(labels):
+            print(i, label)
+            if "person" in label:
+                filters.append(True)
+            else:
+                filters.append(False)
+
+        masks = [i for indx,i in enumerate(masks) if filters[indx] == True]
+
+        self.overlay_instances(
+            masks=masks,
+            boxes=None,
+            labels=None,
+            keypoints=None,
+            assigned_colors=colors,
+            alpha=1.0,
+        )
+        return self.output
+
     def draw_sem_seg(self, sem_seg, area_threshold=None, alpha=0.8):
         """
         Draw semantic segmentation predictions/labels.
@@ -592,7 +649,7 @@ class Visualizer:
 
             if masks is not None:
                 for segment in masks[i].polygons:
-                    self.draw_polygon(segment.reshape(-1, 2), color, alpha=alpha)
+                    self.draw_polygon(segment.reshape(-1, 2), color, edge_color=color, alpha=alpha)
 
             if labels is not None:
                 # first get a box
@@ -816,6 +873,41 @@ class Visualizer:
                 width,
                 height,
                 fill=False,
+                edgecolor=edge_color,
+                linewidth=linewidth * self.output.scale,
+                alpha=alpha,
+                linestyle=line_style,
+            )
+        )
+        return self.output
+
+    def draw_rect(self, box_coord, alpha=0.5, color="g", edge_color="g", line_style="-"):
+        """
+        Args:
+            box_coord (tuple): a tuple containing x0, y0, x1, y1 coordinates, where x0 and y0
+                are the coordinates of the image's top left corner. x1 and y1 are the
+                coordinates of the image's bottom right corner.
+            alpha (float): blending efficient. Smaller values lead to more transparent masks.
+            edge_color: color of the outline of the box. Refer to `matplotlib.colors`
+                for full list of formats that are accepted.
+            line_style (string): the string to use to create the outline of the boxes.
+
+        Returns:
+            output (VisImage): image object with box drawn.
+        """
+        x0, y0, x1, y1 = box_coord
+        width = x1 - x0
+        height = y1 - y0
+
+        linewidth = max(self._default_font_size / 4, 1)
+
+        self.output.ax.add_patch(
+            mpl.patches.Rectangle(
+                (x0, y0),
+                width,
+                height,
+                fill=True,
+                color=color,
                 edgecolor=edge_color,
                 linewidth=linewidth * self.output.scale,
                 alpha=alpha,

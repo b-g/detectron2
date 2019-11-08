@@ -61,7 +61,8 @@ class VisualizationDemo(object):
                 )
             if "instances" in predictions:
                 instances = predictions["instances"].to(self.cpu_device)
-                vis_output = visualizer.draw_instance_predictions(predictions=instances)
+                #vis_output = visualizer.draw_instance_predictions(predictions=instances)
+                vis_output = visualizer.draw_instance_predictions_mask_only(predictions=instances)
 
         return predictions, vis_output
 
