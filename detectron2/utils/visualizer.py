@@ -368,7 +368,7 @@ class Visualizer:
         )
         return self.output
 
-    def draw_instance_predictions_mask_only(self, predictions):
+    def draw_instance_predictions_mask_only(self, predictions, valid_classes=[]):
         """
         Draw instance-level prediction masks results on an image.
 
@@ -376,6 +376,7 @@ class Visualizer:
             predictions (Instances): the output of an instance detection/segmentation
                 model. Following fields will be used to draw:
                 "pred_boxes", "pred_classes", "scores", "pred_masks" (or "pred_masks_rle").
+            valid_classes (List):
 
         Returns:
             output (VisImage): image object with visualizations.
@@ -388,27 +389,17 @@ class Visualizer:
         labels = _create_text_labels(classes, scores, self.metadata.get("thing_classes", None))
         keypoints = predictions.pred_keypoints if predictions.has("pred_keypoints") else None
 
-        if predictions.has("pred_masks"):
-            masks = np.asarray(predictions.pred_masks)
-            masks = [GenericMask(x, self.output.height, self.output.width) for x in masks]
-        else:
-            masks = None
+        masks = np.asarray(predictions.pred_masks)
+        masks = [GenericMask(x, self.output.height, self.output.width) for x in masks]
 
-        if self._instance_mode == ColorMode.SEGMENTATION and self.metadata.get("thing_colors"):
-            colors = [
-                self._jitter([x / 255 for x in self.metadata.thing_colors[c]]) for c in classes
-            ]
-            alpha = 0.8
-        else:
-            colors = None
-            alpha = 0.5
+        # white
+        colors = [ [1.0]*3] * len(classes)
+        alpha = 1.0
 
         # filter by class name
-        # TODO not just for person
         filters = []
         for i, label in enumerate(labels):
-            print(i, label)
-            if "person" in label:
+            if any(c in label for c in valid_classes):
                 filters.append(True)
             else:
                 filters.append(False)
@@ -421,7 +412,7 @@ class Visualizer:
             labels=None,
             keypoints=None,
             assigned_colors=colors,
-            alpha=1.0,
+            alpha=alpha,
         )
         return self.output
 
@@ -1102,6 +1093,7 @@ class Visualizer:
 
         polygon = mpl.patches.Polygon(
             segment,
+            antialiased=False,
             fill=True,
             facecolor=mplc.to_rgb(color) + (alpha,),
             edgecolor=edge_color,
