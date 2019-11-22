@@ -413,6 +413,7 @@ class Visualizer:
             keypoints=None,
             assigned_colors=colors,
             alpha=alpha,
+            line_width=5
         )
         return self.output
 
@@ -560,7 +561,8 @@ class Visualizer:
         masks=None,
         keypoints=None,
         assigned_colors=None,
-        alpha=0.5
+        alpha=0.5,
+        line_width=None
     ):
         """
         Args:
@@ -640,7 +642,10 @@ class Visualizer:
 
             if masks is not None:
                 for segment in masks[i].polygons:
-                    self.draw_polygon(segment.reshape(-1, 2), color, edge_color=color, alpha=alpha)
+                    if line_width is not None:
+                        self.draw_polygon(segment.reshape(-1, 2), color, edge_color=color, alpha=alpha, line_width=5)
+                    else:
+                        self.draw_polygon(segment.reshape(-1, 2), color, edge_color=color, alpha=alpha)
 
             if labels is not None:
                 # first get a box
@@ -1069,7 +1074,7 @@ class Visualizer:
                     self.draw_text(text, center, color=lighter_color)
         return self.output
 
-    def draw_polygon(self, segment, color, edge_color=None, alpha=0.5):
+    def draw_polygon(self, segment, color, edge_color=None, alpha=0.5, line_width=1):
         """
         Args:
             segment: numpy array of shape Nx2, containing all the points in the polygon.
@@ -1097,7 +1102,7 @@ class Visualizer:
             fill=True,
             facecolor=mplc.to_rgb(color) + (alpha,),
             edgecolor=edge_color,
-            linewidth=max(self._default_font_size // 15 * self.output.scale, 1),
+            linewidth=line_width,
         )
         self.output.ax.add_patch(polygon)
         return self.output

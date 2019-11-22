@@ -39,7 +39,6 @@ def get_parser():
     parser.add_argument(
         "--output",
         help="A file or directory to save output visualizations. "
-        "If not given, will show output in an OpenCV window.",
     )
 
     parser.add_argument(
@@ -73,10 +72,10 @@ if __name__ == "__main__":
     images.extend(glob.glob(os.path.join(folder_images, "*.jpg")))
     images.extend(glob.glob(os.path.join(folder_images, "*.jpeg")))
 
-    for path in tqdm.tqdm(images, disable=not args.output):
+    for path in tqdm.tqdm(images):
         img = read_image(path, format="BGR")
         start_time = time.time()
-        predictions, visualized_output = demo.generate_masks_of_classes(img, ["person","car","truck","bus"])
+        predictions, visualized_output = demo.generate_masks_of_classes(img, ["bicycle","person","car","truck","bus","motorbike"])
         logger.info(
             "{}: detected {} instances in {:.2f}s".format(
                 path, len(predictions["instances"]), time.time() - start_time
