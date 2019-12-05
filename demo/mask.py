@@ -95,7 +95,8 @@ if __name__ == "__main__":
         # masked on black background
         out_filename = os.path.join(args.output_folder, "masked_black/", img_name + ".png")
         os.makedirs(os.path.dirname(out_filename), exist_ok=True)
-        cv2.imwrite(out_filename, cv2.cvtColor(img_alpha, cv2.COLOR_RGBA2RGB))
+        masked_black = cv2.bitwise_and(img, binary_mask.get_image())
+        cv2.imwrite(out_filename, masked_black)
 
         # segments
         predictions, segmented = demo.generate_segments_of_classes(img, valid_classes)
