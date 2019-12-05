@@ -368,6 +368,55 @@ class Visualizer:
         )
         return self.output
 
+    def draw_instance_predictions_only(self, predictions, valid_classes=[]):
+        """
+        Draw instance-level prediction results.
+
+        Args:
+            predictions (Instances): the output of an instance detection/segmentation
+                model. Following fields will be used to draw:
+                "pred_boxes", "pred_classes", "scores", "pred_masks" (or "pred_masks_rle").
+
+        Returns:
+            output (VisImage): image object with visualizations.
+        """
+        self.draw_rect((0,0,self.output.width,self.output.height), alpha=1.0, color="black", edge_color="black", line_style="-")
+
+        boxes = predictions.pred_boxes if predictions.has("pred_boxes") else None
+        scores = predictions.scores if predictions.has("scores") else None
+        classes = predictions.pred_classes if predictions.has("pred_classes") else None
+        labels = _create_text_labels(classes, scores, self.metadata.get("thing_classes", None))
+        keypoints = predictions.pred_keypoints if predictions.has("pred_keypoints") else None
+
+        masks = np.asarray(predictions.pred_masks)
+        masks = [GenericMask(x, self.output.height, self.output.width) for x in masks]
+
+        colors = [
+            self._jitter([x / 255 for x in self.metadata.thing_colors[c]]) for c in classes
+        ]
+        alpha = 1.0
+
+        # filter by class name
+        filters = []
+        for i, label in enumerate(labels):
+            if any(c in label for c in valid_classes):
+                filters.append(True)
+            else:
+                filters.append(False)
+
+        masks = [i for indx,i in enumerate(masks) if filters[indx] == True]
+
+        self.overlay_instances(
+            masks=masks,
+            boxes=None,
+            labels=None,
+            keypoints=None,
+            assigned_colors=colors,
+            alpha=alpha,
+            line_width=5
+        )
+        return self.output
+
     def draw_instance_predictions_mask_only(self, predictions, valid_classes=[]):
         """
         Draw instance-level prediction masks results on an image.

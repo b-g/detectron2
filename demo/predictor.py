@@ -83,7 +83,26 @@ class VisualizationDemo(object):
         visualizer = Visualizer(image, self.metadata, instance_mode=self.instance_mode)
         instances = predictions["instances"].to(self.cpu_device)
         vis_output = visualizer.draw_instance_predictions_mask_only(predictions=instances, valid_classes=valid_classes)
+        return predictions, vis_output
 
+    def generate_segments_of_classes(self, image, valid_classes):
+        """
+        Args:
+            image (np.ndarray): an image of shape (H, W, C) (in BGR order).
+                This is the format used by OpenCV.
+            valid_classes (List): list of valid classes
+
+        Returns:
+            predictions (dict): the output of the model.
+            vis_output (VisImage): the visualized image output.
+        """
+        vis_output = None
+        predictions = self.predictor(image)
+        # Convert image from OpenCV BGR format to Matplotlib RGB format.
+        image = image[:, :, ::-1]
+        visualizer = Visualizer(image, self.metadata, instance_mode=self.instance_mode)
+        instances = predictions["instances"].to(self.cpu_device)
+        vis_output = visualizer.draw_instance_predictions_only(predictions=instances, valid_classes=valid_classes)
         return predictions, vis_output
 
     def _frame_from_video(self, video):

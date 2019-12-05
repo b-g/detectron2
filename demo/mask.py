@@ -1,4 +1,3 @@
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import argparse
 import glob
 import multiprocessing as mp
@@ -28,17 +27,17 @@ def setup_cfg(args):
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description="Detectron2 Demo")
+    parser = argparse.ArgumentParser(description="Detectron2 Masking")
     parser.add_argument(
         "--config-file",
         default="configs/quick_schedules/e2e_mask_rcnn_R_50_FPN_inference_acc_test.yaml",
         metavar="FILE",
-        help="path to config file",
+        help="Path to config file",
     )
     parser.add_argument("--input-folder", help="Path to folder file.")
     parser.add_argument(
-        "--output",
-        help="A file or directory to save output visualizations. "
+        "--output-folder",
+        help="Folder to save output visualizations. "
     )
 
     parser.add_argument(
@@ -74,15 +73,38 @@ if __name__ == "__main__":
 
     for path in tqdm.tqdm(images):
         img = read_image(path, format="BGR")
+        img_name = os.path.splitext(os.path.basename(path))[0] # without file suffix
         start_time = time.time()
-        predictions, visualized_output = demo.generate_masks_of_classes(img, ["bicycle","person","car","truck","bus","motorbike"])
+
+        valid_classes = ["bicycle","person","car","truck","bus","motorbike"]
+
+        # binary mask
+        predictions, binary_mask = demo.generate_masks_of_classes(img, valid_classes)
+        out_filename = os.path.join(args.output_folder, "masked_binary/", img_name + ".png")
+        os.makedirs(os.path.dirname(out_filename), exist_ok=True)
+        binary_mask.save(out_filename)
+
+        # masked with alpha
+        img_alpha = cv2.cvtColor(img, cv2.COLOR_RGB2RGBA)
+        alpha, _, _ = cv2.split(binary_mask.get_image())
+        img_alpha[:, :, 3] = alpha
+        out_filename = os.path.join(args.output_folder, "masked_alpha/", img_name + ".png")
+        os.makedirs(os.path.dirname(out_filename), exist_ok=True)
+        cv2.imwrite(out_filename, img_alpha)
+
+        # masked on black background
+        out_filename = os.path.join(args.output_folder, "masked_black/", img_name + ".png")
+        os.makedirs(os.path.dirname(out_filename), exist_ok=True)
+        cv2.imwrite(out_filename, cv2.cvtColor(img_alpha, cv2.COLOR_RGBA2RGB))
+
+        # segments
+        predictions, segmented = demo.generate_segments_of_classes(img, valid_classes)
+        out_filename = os.path.join(args.output_folder, "segmented/", img_name + ".png")
+        os.makedirs(os.path.dirname(out_filename), exist_ok=True)
+        segmented.save(out_filename)
+
         logger.info(
             "{}: detected {} instances in {:.2f}s".format(
                 path, len(predictions["instances"]), time.time() - start_time
             )
         )
-        out_filename = os.path.join(
-            args.output, 
-            os.path.splitext(os.path.basename(path))[0] + ".png"
-        )
-        visualized_output.save(out_filename)
